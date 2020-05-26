@@ -1,9 +1,8 @@
 package goqs
 
 import (
-	"fmt"
 	"io"
-	"os"
+	"io/ioutil"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -11,9 +10,10 @@ import (
 
 //Document stores the contents of an html page in order, and all of the top level elements
 type Document struct {
-	page, topElements []HTMLElement
+	page, topElements []*HTMLElement
 }
 
+//ParsingError occurs when an parsing fails or an html.ErrorToken appears
 type ParsingError struct{}
 
 func (ParsingError) Error() string {
@@ -24,24 +24,91 @@ func (ParsingError) Error() string {
 func ParseHTML(htmlStr string) (Document, error) {
 	htmlReader := strings.NewReader(htmlStr)
 	tokenizer := html.NewTokenizer(htmlReader)
-	for tokenizer.Err() != io.EOF {
-		fmt.Println(tokenizer.Token().Data)
-		fmt.Println(tokenizer.Next())
+	stack := HTMLStack{}
+	doc := Document{}
+
+	index := 0
+
+	for {
+		tokenizer.Next()
+		if tokenizer.Err() == io.EOF {
+			break
+		}
+		token := tokenizer.Token()
+
+		element := HTMLElement{Raw: token, TokenType: token.Type, Attributes: make(map[string]string), atomicTag: token.DataAtom}
+
+		switch token.Type {
+		case html.StartTagToken:
+			fallthrough
+
+		case html.SelfClosingTagToken:
+			element.Tag = token.Data
+			for _, attr := range token.Attr {
+				if attr.Key == "class" {
+					element.ClassList = strings.Split(attr.Val, " ")
+				} else if attr.Key == "id" {
+					element.ID = attr.Val
+				}
+				element.Attributes[attr.Key] = attr.Val
+			}
+			fallthrough
+
+		case html.DoctypeToken:
+			element.depth = stack.Size()
+			element.pageIndex = index
+			index++
+			doc.page = append(doc.page, &element)
+
+			if stack.Size() != 0 {
+				top, _ := stack.Top()
+				top.Children = append(top.Children, &element)
+				top.textIndex++
+			}
+			if token.Type == html.StartTagToken && !selfClosingTags.has(token.DataAtom) {
+				stack.Push(&element)
+			}
+
+		case html.EndTagToken:
+			endElem, err := stack.Pop()
+			if err != nil {
+				return Document{}, err
+			}
+			if stack.Size() == 0 {
+				doc.topElements = append(doc.topElements, endElem)
+			}
+
+		case html.CommentToken:
+		case html.TextToken:
+			if stack.Size() != 0 {
+				top, _ := stack.Top()
+				if token.Data != "\n" {
+					for strings.HasPrefix(token.Data, "\n") {
+						token.Data = strings.Replace(token.Data, "\n", "", 1)
+					}
+					top.text = append(top.text, textOrder{text: token.Data, index: top.textIndex})
+				}
+				top.textIndex++
+			}
+
+		case html.ErrorToken:
+			return Document{}, ParsingError{}
+		}
 	}
-	return Document{}, nil
+	return doc, nil
 }
 
 //ParseHTMLFile takes a filepath and parses the html inside
 func ParseHTMLFile(filePath string) (Document, error) {
-	htmlFile, err := os.Open(filePath)
+	htmlBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return Document{}, err
 	}
-	htmlBytes := make([]byte, 0)
-	_, err = htmlFile.Read(htmlBytes)
-	if err != nil {
-		return Document{}, err
-	}
+
 	htmlStr := string(htmlBytes)
+	if err != nil {
+		return Document{}, err
+	}
+
 	return ParseHTML(htmlStr)
 }

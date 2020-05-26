@@ -1,11 +1,13 @@
 package goqs
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestStackSize(t *testing.T) {
 	stack := MakeStack()
 	for i := 0; i < 10; i++ {
-		stack.Push(HTMLElement{})
+		stack.Push(&HTMLElement{})
 	}
 	if stack.Size() != 10 {
 		t.Error("Size calculations are wrong")
@@ -16,7 +18,7 @@ func TestStackPop(t *testing.T) {
 	stack := MakeStack()
 	arr := []string{"6", "5", "4", "3", "2", "1"}
 	for _, v := range arr {
-		stack.Push(HTMLElement{Tag: v})
+		stack.Push(&HTMLElement{Tag: v})
 	}
 
 	for i := len(arr) - 1; i >= 0; i-- {

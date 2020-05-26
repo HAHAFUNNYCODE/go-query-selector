@@ -8,7 +8,7 @@ type HTMLStack struct {
 
 //HTMLStackNode is a linked list node that is used in HTMLStack
 type HTMLStackNode struct {
-	element HTMLElement
+	element *HTMLElement
 	next    *HTMLStackNode
 }
 
@@ -27,7 +27,7 @@ func MakeStack() HTMLStack {
 }
 
 //Push adds onto the top of the stack
-func (stack *HTMLStack) Push(element HTMLElement) {
+func (stack *HTMLStack) Push(element *HTMLElement) {
 	node := HTMLStackNode{element, nil}
 	node.next = stack.top
 	stack.top = &node
@@ -35,9 +35,9 @@ func (stack *HTMLStack) Push(element HTMLElement) {
 }
 
 //Pop removes the top element and returns it
-func (stack *HTMLStack) Pop() (HTMLElement, error) {
+func (stack *HTMLStack) Pop() (*HTMLElement, error) {
 	if stack.size == 0 {
-		return HTMLElement{}, EmptyStackError{}
+		return nil, EmptyStackError{}
 	}
 
 	node := stack.top
@@ -47,9 +47,9 @@ func (stack *HTMLStack) Pop() (HTMLElement, error) {
 }
 
 //Top returns the top element if it, or gives an error if stack is empty
-func (stack *HTMLStack) Top() (HTMLElement, error) {
+func (stack *HTMLStack) Top() (*HTMLElement, error) {
 	if stack.size == 0 {
-		return HTMLElement{}, EmptyStackError{}
+		return nil, EmptyStackError{}
 	}
 	return stack.top.element, nil
 }
