@@ -8,11 +8,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-//Document stores the contents of an html page in order, and all of the top level elements
-type Document struct {
-	page, topElements []*HTMLElement
-}
-
 //ParsingError occurs when an parsing fails or an html.ErrorToken appears
 type ParsingError struct{}
 
@@ -36,7 +31,12 @@ func ParseHTML(htmlStr string) (Document, error) {
 		}
 		token := tokenizer.Token()
 
-		element := HTMLElement{Raw: token, TokenType: token.Type, Attributes: make(map[string]string), atomicTag: token.DataAtom}
+		element := HTMLElement{Raw: token,
+			TokenType:  token.Type,
+			Attributes: make(map[string]string),
+			atomicTag:  token.DataAtom,
+			Children:   make([]*HTMLElement, 0),
+			text:       make([]textOrder, 0)}
 
 		switch token.Type {
 		case html.StartTagToken:
@@ -46,7 +46,7 @@ func ParseHTML(htmlStr string) (Document, error) {
 			element.Tag = token.Data
 			for _, attr := range token.Attr {
 				if attr.Key == "class" {
-					element.ClassList = strings.Split(attr.Val, " ")
+					element.ClassList = MakeClassSet(strings.Split(attr.Val, " "))
 				} else if attr.Key == "id" {
 					element.ID = attr.Val
 				}
@@ -62,8 +62,13 @@ func ParseHTML(htmlStr string) (Document, error) {
 
 			if stack.Size() != 0 {
 				top, _ := stack.Top()
+				if l := len(top.Children); l > 0 {
+					top.Children[l-1].nextSibling = &element
+				}
 				top.Children = append(top.Children, &element)
-				top.textIndex++
+				if formattingTags.has(token.DataAtom) || textTags.has(token.DataAtom) || sectioningTags.has(token.DataAtom) {
+					top.textIndex++
+				}
 			}
 			if token.Type == html.StartTagToken && !selfClosingTags.has(token.DataAtom) {
 				stack.Push(&element)
@@ -87,8 +92,8 @@ func ParseHTML(htmlStr string) (Document, error) {
 						token.Data = strings.Replace(token.Data, "\n", "", 1)
 					}
 					top.text = append(top.text, textOrder{text: token.Data, index: top.textIndex})
+					top.textIndex++
 				}
-				top.textIndex++
 			}
 
 		case html.ErrorToken:

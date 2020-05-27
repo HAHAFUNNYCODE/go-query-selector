@@ -6,7 +6,6 @@ import (
 )
 
 var verboseCombinators map[int]string = map[int]string{
-	single:           "Single",
 	descendant:       "Descandant",
 	directDescendant: "Direct Descendant",
 	sibling:          "Sibling",
@@ -14,11 +13,12 @@ var verboseCombinators map[int]string = map[int]string{
 }
 
 func TestParsePatterns(t *testing.T) {
-	patterns := []string{"main + div", "main+div"}
+	patterns := []string{"header+footer"}
 	for _, p := range patterns {
 		pat, err := parsePattern(p)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			continue
 		}
 		for {
 			fmt.Println("Pattern:", p)

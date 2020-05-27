@@ -35,18 +35,22 @@ func printTimes(s string, n int) {
 // }
 
 func printElem(elem *HTMLElement) {
-	printTimes("\t", elem.depth)
+	if elem == nil {
+		fmt.Println(elem)
+		return
+	}
+	// printTimes("\t", elem.depth)
 	fmt.Println(elem.Raw)
-	printTimes("\t", elem.depth)
+	// printTimes("\t", elem.depth)
 	fmt.Println(elem.pageIndex, elem.depth)
-	printTimes("\t", elem.depth)
+	// printTimes("\t", elem.depth)
 	fmt.Println(elem.TokenType, "Text:", elem.Text())
-	printTimes("\t", elem.depth)
-	fmt.Println("Tag:", elem.Tag, "ID:", elem.ID, "Classes:", strings.Join(elem.ClassList, ","))
-	printTimes("\t", elem.depth)
+	// printTimes("\t", elem.depth)
+	fmt.Println("Tag:", elem.Tag, "ID:", elem.ID, "Classes:", strings.Join(elem.ClassList.Slice(), ","))
+	// printTimes("\t", elem.depth)
 	fmt.Println("Attributes:")
 	for k, v := range elem.Attributes {
-		printTimes("\t", elem.depth)
+		// printTimes("\t", elem.depth)
 		fmt.Println(k, ":", v)
 	}
 	fmt.Println()
@@ -54,13 +58,13 @@ func printElem(elem *HTMLElement) {
 
 func TestParseHTML(t *testing.T) {
 	doc, _ := ParseHTMLFile("testing/test1.html")
-
+	_ = doc
 	// for _, e := range doc.topElements {
 	// 	digElements(e, 0)
 	// 	_ = e
 	// }
 
-	for _, e := range doc.page {
-		printElem(e)
-	}
+	// for _, e := range doc.page {
+	// 	printElem(e)
+	// }
 }

@@ -29,8 +29,7 @@ func makeQueryPatterns(base string) ([]queryPattern, error) {
 }
 
 const (
-	single = iota + 1
-	descendant
+	descendant = iota + 1
 	directDescendant
 	sibling
 	adjacentSibling
@@ -43,10 +42,12 @@ var combinators map[string]int = map[string]int{
 }
 
 //PatternError is thrown when a parsed querySelector pattern's syntax is unrecognized
-type PatternError struct{}
+type PatternError struct {
+	msg string
+}
 
 func (e PatternError) Error() string {
-	return "Pattern syntax is unrecognized"
+	return e.msg
 }
 
 func parsePattern(base string) (queryPattern, error) {
@@ -55,22 +56,28 @@ func parsePattern(base string) (queryPattern, error) {
 	for _, pat := range heirarchy {
 		if combinators[pat] > 0 {
 			if len(patterns) == 0 {
-				return queryPattern{}, PatternError{}
+				return queryPattern{}, PatternError{"Pattern syntax is unrecognized"}
 			}
 			patterns[len(patterns)-1].combinator = combinators[pat]
 			continue
 		}
 
-		var curPattern queryPattern = queryPattern{combinator: single}
-		if len(patterns) > 0 && patterns[len(patterns)-1].combinator == single {
+		var curPattern queryPattern = queryPattern{combinator: descendant, attr: make(map[string]string)}
+		if len(patterns) > 0 && patterns[len(patterns)-1].combinator == descendant {
 			patterns[len(patterns)-1].combinator = descendant
 		}
 		var curString *string = &curPattern.tag
-		for _, char := range pat {
+		skipTo := -1
+
+		for i, char := range pat {
+			if i < skipTo {
+				continue
+			}
+
 			if combinators[string(char)] > 0 {
 				curPattern.combinator = combinators[string(char)]
 				patterns = append(patterns, curPattern)
-				curPattern = queryPattern{combinator: single}
+				curPattern = queryPattern{combinator: descendant}
 				continue
 			}
 
@@ -79,9 +86,19 @@ func parsePattern(base string) (queryPattern, error) {
 				curPattern.class = append(curPattern.class, "")
 				curString = &curPattern.class[len(curPattern.class)-1]
 			case '#':
+				if curPattern.id != "" {
+					return queryPattern{}, PatternError{"Multiple ids found in pattern"}
+				}
 				curString = &curPattern.id
-				// case '[':
-				// 	curPattern.attr = append(curPattern.attr)
+			case '[':
+				curString = nil
+				var key, val string
+				var err error
+				key, val, skipTo, err = parseAttribute(pat, i+1)
+				if err != nil {
+					return queryPattern{}, err
+				}
+				curPattern.attr[key] = val
 			default:
 				*curString = *curString + string(char)
 			}
@@ -95,4 +112,71 @@ func parsePattern(base string) (queryPattern, error) {
 		return patterns[0], nil
 	}
 	return queryPattern{}, nil
+}
+
+func parseAttribute(base string, index int) (string, string, int, error) {
+	attr, value := "", ""
+	curString := &attr
+	startedAttr, finishedAttr := false, false
+	startedVal, finishedVal := false, false
+	openQuote, closedQuote := false, false
+	for index < len(base) {
+		char := rune(base[index])
+		switch char {
+		case '=':
+			curString = &value
+
+		case ']':
+			if attr != "" && openQuote == closedQuote {
+				return attr, value, index + 1, nil
+			}
+			if openQuote != closedQuote {
+				return attr, value, index + 1, PatternError{"Opened quote was not closed"}
+			}
+			return attr, value, index + 1, PatternError{"Empty attribute in pattern"}
+
+		case ' ':
+			if startedAttr {
+				finishedAttr = true
+			}
+			if startedVal && !closedQuote {
+				finishedVal = true
+			}
+
+		case '\'':
+			fallthrough
+		case '"':
+			if openQuote {
+				closedQuote = true
+				finishedVal = true
+			} else {
+				if curString != &value {
+					return "", "", index, PatternError{"Quote found before value started"}
+				}
+				openQuote = true
+			}
+
+		default:
+			if curString == &attr && finishedAttr {
+				return "", "", index, PatternError{"Multiple spaces in attribute name"}
+			}
+			if curString == &value && finishedVal {
+				return "", "", index, PatternError{"Value extends past end of quotes or of value"}
+			}
+			if closedQuote {
+				return "", "", index, PatternError{"Value after closed quote"}
+			}
+
+			if curString == &attr {
+				startedAttr = true
+			} else if curString == &value {
+				startedVal = true
+			}
+
+			*curString += string(char)
+		}
+
+		index++
+	}
+	return "", "", index, PatternError{"Attribute was not closed"}
 }
