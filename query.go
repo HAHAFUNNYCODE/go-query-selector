@@ -51,9 +51,9 @@ func (e PatternError) Error() string {
 }
 
 func parsePattern(base string) (queryPattern, error) {
-	heirarchy := strings.Split(base, " ")
+	hierarchy := strings.Split(base, " ")
 	patterns := make([]queryPattern, 0)
-	for _, pat := range heirarchy {
+	for _, pat := range hierarchy {
 		if combinators[pat] > 0 {
 			if len(patterns) == 0 {
 				return queryPattern{}, PatternError{"Pattern syntax is unrecognized"}

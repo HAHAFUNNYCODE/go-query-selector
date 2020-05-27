@@ -89,7 +89,10 @@ func (elem *HTMLElement) String() string {
 	return str
 }
 
-//QuerySelector ...
+//QuerySelector returns a pointer to the first element
+//satisfying the criteria in the input string. The function
+//uses CSS selectors like in JavaScript. For reference, follow
+//the link to https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors
 func (elem *HTMLElement) QuerySelector(pattern string) (*HTMLElement, error) {
 	matches, err := makeQueryPatterns(pattern)
 	if err != nil {
