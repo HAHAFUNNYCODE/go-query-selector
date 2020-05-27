@@ -1,7 +1,6 @@
 package goqs
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -159,7 +158,6 @@ func (elem *HTMLElement) getFirstMatchingDescendant(qp queryPattern, depth int, 
 }
 
 func (elem *HTMLElement) getFirstMatchingSibling(qp queryPattern, combinator int) *HTMLElement {
-	fmt.Println(verboseCombinators[combinator])
 	if elem.nextSibling == nil {
 		return nil
 	}

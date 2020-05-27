@@ -7,7 +7,7 @@ import (
 
 func TestElementQS(t *testing.T) {
 	doc, _ := ParseHTMLFile("testing/test1.html")
-	tests := []string{"header~footer"}
+	tests := []string{"[use]"}
 	for _, t := range tests {
 		elem, err := doc.QuerySelector(t)
 		if err != nil {
